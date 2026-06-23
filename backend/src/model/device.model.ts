@@ -113,10 +113,13 @@ const DeviceSchema = new Schema<IDevice>({
   },
   approvalToken: {
     type: String,
-    select: false
+    required: false,
+    default: null
   },
   approvalTokenExpires: {
-    type: Date
+    type: Date,
+    required: false,
+    default: null
   },
   lastLoginAt: {
     type: Date,

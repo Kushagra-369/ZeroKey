@@ -10,9 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mediapipe/face_mesh": "^0.4.1633559619",
+    "@mediapipe/hands": "^0.4.1675469240",
+    "@mediapipe/selfie_segmentation": "^0.1.1675465747",
     "@tailwindcss/vite": "^4.3.1",
+    "axios": "^1.18.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.18.0",
     "tailwindcss": "^4.3.1"
   },
   "devDependencies": {

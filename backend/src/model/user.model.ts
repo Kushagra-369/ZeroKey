@@ -14,7 +14,7 @@ export interface IUser extends Document {
     isVerified: boolean;
     isActive: boolean;
     isLocked: boolean;
-    lockedUntil?: Date;
+    lockedUntil?: Date | null;
     failedLoginAttempts: number;
     lastLoginAt?: Date;
     lastLoginIP?: string;
@@ -97,7 +97,8 @@ const UserSchema = new Schema<IUser>({
         default: false
     },
     lockedUntil: {
-        type: Date
+        type: Date,
+        default: null
     },
     failedLoginAttempts: {
         type: Number,
