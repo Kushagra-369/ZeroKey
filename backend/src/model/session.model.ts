@@ -10,7 +10,13 @@ export interface ISession extends Document {
   isActive: boolean;
   ipAddress: string;
   userAgent: string;
-  loginMethod: 'password' | 'face' | 'hand' | 'gesture' | 'recovery';
+  loginMethod:
+  | 'password'
+  | 'otp'
+  | 'face'
+  | 'hand'
+  | 'gesture'
+  | 'recovery';
   location?: {
     city?: string;
     country?: string;
@@ -64,8 +70,15 @@ const SessionSchema = new Schema<ISession>({
   },
   loginMethod: {
     type: String,
-    enum: ['password', 'face', 'hand', 'gesture', 'recovery'],
-    default: 'password'
+    enum: [
+      'password',
+      'otp',
+      'face',
+      'hand',
+      'gesture',
+      'recovery'
+    ],
+    default: 'otp'
   },
   location: {
     city: String,

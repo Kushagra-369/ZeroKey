@@ -1,6 +1,18 @@
+import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './context/AuthContext';
+import AppRoutes from './routes/AppRoutes';
+import './index.css';
 
-export default function App() {
+function App() {
   return (
-    <div>App</div>
-  )
+    <BrowserRouter>
+      <AuthProvider>
+        <Toaster position="top-right" />
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
+
+export default App;

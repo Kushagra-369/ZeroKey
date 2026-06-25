@@ -9,7 +9,7 @@ import {
     logout,
     refreshToken,
     getProfile,
-    verifyEmail,
+    sendOTP, checkUser,verifyOTP
 } from "../controller/auth.controller";
 
 // User Controller
@@ -73,12 +73,14 @@ import {
 
 const router = express.Router();
 
-// ==================== AUTH ROUTES (Public) ====================
+// ==================== AUTH ROUTES ====================
+router.post("/auth/send-otp", sendOTP);
+router.post("/auth/verify-otp", verifyOTP);
+router.post("/auth/check-user", checkUser);
 router.post("/auth/register", rateLimiter({ windowMs: 15 * 60 * 1000, max: 3 }), register);
 router.post("/auth/login", rateLimiter({ windowMs: 5 * 60 * 1000, max: 5 }), login);
 router.post("/auth/logout", authenticate, logout);
 router.post("/auth/refresh", refreshToken);
-router.post("/auth/verify-email", verifyEmail);
 router.get("/auth/profile", authenticate, getProfile);
 
 // ==================== USER ROUTES (Protected) ====================

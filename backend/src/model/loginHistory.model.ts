@@ -4,7 +4,14 @@ export interface ILoginHistory extends Document {
   userId: mongoose.Types.ObjectId;
   email: string;
   success: boolean;
-  method: 'password' | 'face' | 'hand' | 'gesture' | 'recovery' | 'magic_link';
+  method:
+  | 'password'
+  | 'otp'
+  | 'face'
+  | 'hand'
+  | 'gesture'
+  | 'recovery'
+  | 'magic_link';
   ipAddress: string;
   userAgent: string;
   deviceId?: string;
@@ -41,7 +48,15 @@ const LoginHistorySchema = new Schema<ILoginHistory>({
   },
   method: {
     type: String,
-    enum: ['password', 'face', 'hand', 'gesture', 'recovery', 'magic_link'],
+    enum: [
+      'password',
+      'otp',
+      'face',
+      'hand',
+      'gesture',
+      'recovery',
+      'magic_link'
+    ],
     required: true
   },
   ipAddress: {

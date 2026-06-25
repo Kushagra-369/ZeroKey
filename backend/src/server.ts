@@ -12,7 +12,7 @@ import { requestLogger } from "./middleware/logger.middleware";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT ;
 const mongoURL = process.env.MONGO_URI;
 
 // ==================== VALIDATE ENVIRONMENT ====================
@@ -120,7 +120,7 @@ app.get("/", (req, res) => {
 });
 
 // API Routes
-app.use("/api", router);
+app.use("/", router);
 
 // 404 handler
 app.use((req, res) => {
