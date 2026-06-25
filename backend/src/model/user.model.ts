@@ -33,6 +33,11 @@ export interface IUser extends Document {
         autoLogoutMinutes: number;
         language: string;
     };
+    // ✅ NEW OTP FIELDS
+    otp?: string | null;
+    otpExpiresAt?: Date | null;
+    otpAttempts: number;
+    isOtpVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
@@ -125,7 +130,7 @@ const UserSchema = new Schema<IUser>({
         emails: [String],
         waitTime: {
             type: Number,
-            default: 24 // hours
+            default: 24
         },
         approvedAt: Date
     },
@@ -151,11 +156,30 @@ const UserSchema = new Schema<IUser>({
             type: String,
             default: 'en'
         }
+    },
+    // ✅ NEW OTP FIELDS
+    otp: {
+        type: String,
+        select: false,
+        default: null
+    },
+    otpExpiresAt: {
+        type: Date,
+        default: null
+    },
+    otpAttempts: {
+        type: Number,
+        default: 0
+    },
+    isOtpVerified: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
 });
 
+// Pre-save hook to hash password
 UserSchema.pre("save", async function () {
     if (!this.isModified("password")) return;
 
@@ -177,17 +201,17 @@ UserSchema.methods.incrementLoginAttempts = async function () {
 
     if (this.failedLoginAttempts >= 10) {
         this.isLocked = true;
-        this.lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
+        this.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
     }
 
     await this.save();
-};
+}; 
 
 // Reset login attempts
 UserSchema.methods.resetLoginAttempts = async function () {
     this.failedLoginAttempts = 0;
     this.isLocked = false;
-    this.lockedUntil = undefined;
+    this.lockedUntil = null;
     await this.save();
 };
 

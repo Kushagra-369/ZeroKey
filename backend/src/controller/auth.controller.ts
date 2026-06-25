@@ -15,9 +15,6 @@ import { AuthRequest } from '../types';
 import dotenv from "dotenv";
 dotenv.config();
 
-// ==================== OTP STORE ====================
-const otpStore = new Map<string, { otp: string, expiresAt: Date }>();
-
 // ==================== EMAIL CONFIG ====================
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -92,6 +89,8 @@ interface OTPVerifyBody {
     os?: string;
     browser?: string;
 }
+const otpStore = new Map<string, { otp: string, expiresAt: Date }>();
+
 
 // ==================== SEND OTP ====================
 export const sendOTP = async (req: Request, res: Response) => {
@@ -102,25 +101,43 @@ export const sendOTP = async (req: Request, res: Response) => {
             return errorResponse(res, 'Email is required', 400);
         }
 
-        // Check if user exists
-        const user = await User.findOne({ email });
-        const isNewUser = !user;
+        // ✅ Check if user exists
+        let user = await User.findOne({ email });
 
         // Generate OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        // Store OTP with expiry (5 minutes)
-        otpStore.set(email, {
-            otp,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-        });
+        const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+        if (user) {
+            // ✅ Existing user: save OTP in DB
+            user.otp = otp;
+            user.otpExpiresAt = otpExpiresAt;
+            user.otpAttempts = 0;
+            user.isOtpVerified = false;
+            await user.save();
+        } else {
+            // ✅ New user: create user first (or save in memory, but let's create user with isVerified=false)
+            // Better approach: create user now with isVerified=false and otp fields
+            user = new User({
+                email,
+                name: email.split('@')[0], // temporary name
+                isPasswordless: true,
+                isVerified: false,
+                otp: otp,
+                otpExpiresAt: otpExpiresAt,
+                otpAttempts: 0,
+                isOtpVerified: false
+            });
+            await user.save();
+        }
 
         // Send OTP email
-        await sendOTPEmail(email, otp, isNewUser);
+        const isNewUser = user.isVerified === false; // or check createdAt
+        await sendOTPEmail(email, otp, !user.isVerified);
 
         return successResponse(res, {
-            isNewUser,
-            message: isNewUser ? 'OTP sent for registration' : 'OTP sent for login'
+            isNewUser: !user.isVerified,
+            message: !user.isVerified ? 'OTP sent for registration' : 'OTP sent for login'
         }, 'OTP sent successfully');
 
     } catch (error) {
@@ -129,7 +146,7 @@ export const sendOTP = async (req: Request, res: Response) => {
     }
 };
 
-// ==================== VERIFY OTP ====================
+// ==================== OTP STORE (for new users only) ====================
 export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Response) => {
     try {
         const { email, otp, name, deviceId, deviceName, os, browser } = req.body;
@@ -138,43 +155,49 @@ export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Respon
             return errorResponse(res, 'Email and OTP are required', 400);
         }
 
-        // Check OTP in store
-        const storedData = otpStore.get(email);
-        if (!storedData) {
-            return errorResponse(res, 'OTP expired or not found', 400);
+        // ✅ Fetch user with OTP fields (select +otp)
+        const user = await User.findOne({ email }).select('+otp +otpExpiresAt');
+
+        if (!user) {
+            return errorResponse(res, 'User not found. Please request a new OTP.', 404);
         }
 
-        if (storedData.otp !== otp) {
+        // Check OTP
+        if (!user.otp || user.otp !== otp) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            await user.save();
+
+            if (user.otpAttempts >= 5) {
+                return errorResponse(res, 'Too many failed attempts. Please request new OTP.', 400);
+            }
             return errorResponse(res, 'Invalid OTP', 400);
         }
 
-        if (new Date() > storedData.expiresAt) {
-            otpStore.delete(email);
-            return errorResponse(res, 'OTP expired', 400);
+        if (user.otpExpiresAt && new Date() > user.otpExpiresAt) {
+            user.otp = null;
+            user.otpExpiresAt = null;
+            await user.save();
+            return errorResponse(res, 'OTP expired. Please request a new one.', 400);
         }
 
-        // OTP verified - delete from store
-        otpStore.delete(email);
+        // ✅ OTP verified - clear OTP fields
+        user.otp = null;
+        user.otpExpiresAt = null;
+        user.otpAttempts = 0;
+        user.isOtpVerified = true;
+        user.isVerified = true;
+        if (!user.name && name) {
+            user.name = name;
+        }
+        await user.save();
 
-        // Check if user exists
-        let user = await User.findOne({ email });
+        // ✅ Check if new user (no recovery codes yet)
+        const existingCodes = await RecoveryCode.find({ userId: user._id });
+        let isNewUser = existingCodes.length === 0;
 
-        if (!user) {
-            // New user - create account
-            if (!name) {
-                return errorResponse(res, 'Name is required for new user registration', 400);
-            }
-
-            user = new User({
-                email,
-                name,
-                isPasswordless: true,
-                isVerified: true,
-            });
-            await user.save();
-
-            // Generate recovery codes
-            const recoveryCodes: string[] = [];
+        // ✅ Generate recovery codes for new user
+        let recoveryCodes: string[] = [];
+        if (isNewUser) {
             for (let i = 0; i < 8; i++) {
                 const code = crypto.randomBytes(5).toString('hex').toUpperCase();
                 recoveryCodes.push(code);
@@ -186,12 +209,9 @@ export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Respon
                     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
                 });
             }
-
-            // Store recovery codes temporarily to show once
-            res.locals.recoveryCodes = recoveryCodes;
         }
 
-        // Generate tokens
+        // ✅ Generate JWT tokens
         const token = jwt.sign(
             { id: user._id, email: user.email },
             process.env.JWT_SECRET!,
@@ -204,7 +224,7 @@ export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Respon
             { expiresIn: "7d" }
         );
 
-        // Handle device
+        // ✅ Handle Device
         let device = null;
         if (deviceId) {
             device = await Device.findOne({ deviceId, userId: user._id });
@@ -237,7 +257,7 @@ export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Respon
             }
         }
 
-        // Create session
+        // ✅ Create Session
         const sessionData: any = {
             userId: user._id,
             token,
@@ -256,7 +276,7 @@ export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Respon
 
         await Session.create(sessionData);
 
-        // Log login history
+        // ✅ Log Login History
         const historyData: any = {
             userId: user._id,
             email: user.email,
@@ -273,19 +293,20 @@ export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Respon
 
         await LoginHistory.create(historyData);
 
-        // Update last login
+        // ✅ Update last login
         user.lastLoginAt = new Date();
         user.lastLoginIP = req.ip || req.socket.remoteAddress || '';
         user.lastLoginDevice = req.get('user-agent') || '';
         await user.save();
 
+        // ✅ Build Response
         const responseData: any = {
             user: {
                 id: user._id,
                 email: user.email,
                 name: user.name,
                 securityScore: user.securityScore,
-                isNewUser: !user.createdAt || user.createdAt.getTime() === user.updatedAt?.getTime(),
+                isNewUser
             },
             token,
             refreshToken,
@@ -296,30 +317,28 @@ export const verifyOTP = async (req: Request<{}, {}, OTPVerifyBody>, res: Respon
             } : null
         };
 
-        // Include recovery codes for new users
-        if (res.locals.recoveryCodes) {
-            responseData.recoveryCodes = res.locals.recoveryCodes;
+        if (isNewUser && recoveryCodes.length > 0) {
+            responseData.recoveryCodes = recoveryCodes;
         }
 
-        return successResponse(res, responseData, 'OTP verified successfully');
+        return successResponse(res, responseData, isNewUser ? 'Account created successfully!' : 'Login successful!');
 
     } catch (error) {
         console.error('Verify OTP error:', error);
         return errorResponse(res, 'Failed to verify OTP', 500);
     }
 };
-
 // ==================== CHECK USER EXISTS ====================
-export const checkUser = async (req: Request, res: Response) => { 
+export const checkUser = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
- 
+
         if (!email) {
             return errorResponse(res, 'Email is required', 400);
         }
 
         const user = await User.findOne({ email });
-        
+
         return successResponse(res, {
             exists: !!user,
             email: email,

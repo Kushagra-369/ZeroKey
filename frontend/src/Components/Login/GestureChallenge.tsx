@@ -90,14 +90,14 @@ export default function GestureChallenge() {
 
   if (!challenge) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 to-gray-800">
         <div className="text-white text-xl">Loading challenge...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 to-gray-800">
       <div className="max-w-md w-full bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/20">
         {/* Header */}
         <div className="text-center mb-6">
@@ -119,7 +119,7 @@ export default function GestureChallenge() {
           </div>
           <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500"
+              className="h-full bg-linear-to-r from-blue-500 to-purple-600 transition-all duration-500"
               style={{ width: `${((currentStep) / challenge.sequence.length) * 100}%` }}
             />
           </div>

@@ -28,33 +28,50 @@ export default function EmailLogin() {
     }
 
     setLoading(true);
-    setStatusMessage('Sending OTP to your email...');
+    setStatusMessage('Checking your identity...');
 
     try {
-      // Get device info for fingerprint
+      // Step 1: Check if user exists
+      const checkRes = await api.post('/auth/check-user', { email });
+      const { exists,  } = checkRes.data.data;
+
+      // Get device info
       const deviceInfo = getDeviceInfo();
 
-      // Step 1: Send OTP to email
-      const res = await api.post('/auth/send-otp', { email });
-      
-      const { isNewUser } = res.data.data;
+      if (!exists) {
+        // ✅ New user → Send OTP
+        setStatusMessage('📧 New user! Sending OTP...');
+        await api.post('/auth/send-otp', { email });
+        toast.success('OTP sent to your email!');
 
-      setStatusMessage(isNewUser ? '📧 New user! OTP sent for registration' : '📧 OTP sent for login');
-      toast.success('OTP sent to your email!');
+        setTimeout(() => {
+          navigate('/login/otp', {
+            state: {
+              email,
+              isNewUser: true,
+              fastMode,
+              trustDevice,
+              deviceInfo,
+            },
+          });
+        }, 500);
+      } else {
+        // ✅ Existing user → Skip OTP, go directly to Face Login
+        setStatusMessage('👋 Welcome back! Proceeding to face verification...');
+        toast.success('Existing user! Proceed to face verification.');
 
-      // Step 2: Navigate to OTP verification page with all data
-      setTimeout(() => {
-        navigate('/login/otp', {
-          state: {
-            email,
-            isNewUser,
-            fastMode,
-            trustDevice,
-            deviceInfo,
-          },
-        });
-      }, 500);
-
+        setTimeout(() => {
+          navigate('/login/face', {
+            state: {
+              email,
+              isNewUser: false,
+              fastMode,
+              trustDevice,
+              deviceInfo,
+            },
+          });
+        }, 500);
+      }
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || 'Network error. Please try again.';
       setStatusMessage('❌ ' + errorMsg);
@@ -66,7 +83,7 @@ export default function EmailLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 to-gray-800 p-4">
       <div className="w-full max-w-md bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/20 transition-all duration-500 animate-fadeIn">
         {/* Header */}
         <div className="text-center mb-8">
@@ -133,7 +150,7 @@ export default function EmailLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-linear-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -157,7 +174,7 @@ export default function EmailLogin() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Sending OTP...
+                Processing...
               </>
             ) : (
               'Continue →'
@@ -166,7 +183,7 @@ export default function EmailLogin() {
         </form>
 
         <p className="text-center text-gray-500 text-sm mt-6">
-          We'll send a 6-digit OTP to your email for verification.
+          {loading ? 'Please wait...' : 'No password needed. Just your face, hand, and gesture.'}
         </p>
       </div>
     </div>

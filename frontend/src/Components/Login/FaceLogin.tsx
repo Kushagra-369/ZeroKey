@@ -87,7 +87,7 @@ export default function FaceLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 to-gray-800">
       <div className="max-w-md w-full bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/20">
         {/* Header */}
         <div className="text-center mb-6">
@@ -117,7 +117,7 @@ export default function FaceLogin() {
             <div className="absolute bottom-4 left-4 right-4">
               <div className="bg-gray-800/80 rounded-full h-2 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-green-400 to-blue-500 transition-all duration-200"
+                  className="h-full bg-linear-to-r from-green-400 to-blue-500 transition-all duration-200"
                   style={{ width: `${livenessScore}%` }}
                 />
               </div>
@@ -148,7 +148,7 @@ export default function FaceLogin() {
           <button
             onClick={captureFace}
             disabled={isScanning}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50"
+            className="w-full bg-linear-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50"
           >
             {isScanning ? 'Scanning...' : '📸 Capture & Verify'}
           </button>

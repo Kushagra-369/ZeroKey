@@ -65,7 +65,7 @@ const SessionSchema = new Schema<ISession>({
     required: true
   },
   userAgent: {
-    type: String,
+    type: String, 
     required: true
   },
   loginMethod: {

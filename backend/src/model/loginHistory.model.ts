@@ -41,7 +41,7 @@ const LoginHistorySchema = new Schema<ILoginHistory>({
     type: String,
     required: true,
     lowercase: true
-  },
+  }, 
   success: {
     type: Boolean,
     required: true

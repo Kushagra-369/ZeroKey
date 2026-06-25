@@ -55,7 +55,7 @@ export default function HandLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 to-gray-800">
       <div className="max-w-md w-full bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/20">
         {/* Header */}
         <div className="text-center mb-6">
@@ -106,7 +106,7 @@ export default function HandLogin() {
         {!isScanning && !gestureDetected && (
           <button
             onClick={scanHand}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition"
+            className="w-full bg-linear-to-r from-purple-500 to-pink-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition"
           >
             🤚 Scan Hand
           </button>

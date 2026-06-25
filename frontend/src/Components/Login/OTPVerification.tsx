@@ -7,12 +7,12 @@ import { useAuth } from '../../hooks/useAuth';
 export default function OTPVerification() {
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
-    const [timer, setTimer] = useState(300); // 5 minutes
+    const [timer, setTimer] = useState(300);
     const [canResend, setCanResend] = useState(false);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const location = useLocation();
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { setAuth } = useAuth();   // ✅ Use setAuth instead of login
 
     const { email, isNewUser, fastMode, trustDevice, deviceInfo } = location.state || {};
 
@@ -22,7 +22,6 @@ export default function OTPVerification() {
             return;
         }
 
-        // Timer countdown
         const interval = setInterval(() => {
             setTimer((prev) => {
                 if (prev <= 1) {
@@ -35,7 +34,7 @@ export default function OTPVerification() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [email]);
+    }, [email, navigate]);
 
     const handleChange = (index: number, value: string) => {
         if (value.length > 1) return;
@@ -45,12 +44,10 @@ export default function OTPVerification() {
         newOtp[index] = value;
         setOtp(newOtp);
 
-        // Auto focus next input
         if (value && index < 5) {
             inputRefs.current[index + 1]?.focus();
         }
 
-        // Auto submit when all digits filled
         if (value && index === 5) {
             const fullOtp = newOtp.join('');
             if (fullOtp.length === 6) {
@@ -84,38 +81,40 @@ export default function OTPVerification() {
             const res = await api.post('/auth/verify-otp', {
                 email,
                 otp: finalOtp,
-                name: email.split('@')[0], // Default name from email
+                name: email.split('@')[0],
                 ...deviceData,
             });
 
             const { token, user, recoveryCodes, device } = res.data.data;
 
-            // Store auth data
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
+            // ✅ Set auth directly using setAuth (no extra API call)
+            setAuth(token, user);
 
             // Show recovery codes if new user
             if (recoveryCodes && recoveryCodes.length > 0) {
-                toast.success('🎉 Welcome! Save your recovery codes:');
+                toast.success('🎉 Welcome! Save your recovery codes (check console)');
                 console.log('Recovery Codes:', recoveryCodes);
-                // Show in a modal or separate page
                 localStorage.setItem('recoveryCodes', JSON.stringify(recoveryCodes));
             }
 
-            // Update auth context
-            await login(email, 'dummy'); // Will be handled by context
+            toast.success(isNewUser ? '🎉 Account created!' : '✅ Verified!');
 
-            toast.success(isNewUser ? '🎉 Account created successfully!' : '✅ Login successful!');
-
-            // Navigate based on device status
+            // ✅ Navigate based on mode and device
             if (device && !device.isApproved) {
                 navigate('/login/device-approval', { state: { deviceId: device.deviceId } });
             } else if (fastMode && device?.isTrusted) {
                 navigate('/dashboard');
             } else {
-                navigate('/login/face', { state: { email, isNewUser, fastMode, trustDevice } });
+                navigate('/login/face', {
+                    state: {
+                        email,
+                        isNewUser,
+                        fastMode,
+                        trustDevice,
+                        deviceInfo,
+                    },
+                });
             }
-
         } catch (error: any) {
             const errorMsg = error.response?.data?.error || 'Invalid OTP. Please try again.';
             toast.error(errorMsg);
@@ -149,21 +148,17 @@ export default function OTPVerification() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 to-gray-800 p-4">
             <div className="w-full max-w-md bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/20">
-                {/* Header */}
                 <div className="text-center mb-8">
                     <div className="text-4xl mb-3">📧</div>
                     <h2 className="text-2xl font-bold text-white">Verify Your Email</h2>
                     <p className="text-gray-400 text-sm mt-1">
                         We sent a 6-digit code to <span className="text-blue-400">{email}</span>
                     </p>
-                    {isNewUser && (
-                        <p className="text-green-400 text-xs mt-2">✨ New user registration</p>
-                    )}
+                    {isNewUser && <p className="text-green-400 text-xs mt-2">✨ New user registration</p>}
                 </div>
 
-                {/* OTP Input */}
                 <div className="flex justify-center gap-2 mb-6">
                     {otp.map((digit, index) => (
                         <input
@@ -184,7 +179,6 @@ export default function OTPVerification() {
                     ))}
                 </div>
 
-                {/* Timer & Resend */}
                 <div className="text-center mb-6">
                     {timer > 0 ? (
                         <p className="text-gray-400 text-sm">
@@ -201,33 +195,16 @@ export default function OTPVerification() {
                     )}
                 </div>
 
-                {/* Verify Button */}
                 <button
                     onClick={() => handleVerify()}
                     disabled={loading || otp.join('').length !== 6}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-linear-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {loading ? (
                         <>
-                            <svg
-                                className="animate-spin h-5 w-5 text-white"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                            >
-                                <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                />
-                                <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                />
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
                             Verifying...
                         </>
@@ -236,7 +213,6 @@ export default function OTPVerification() {
                     )}
                 </button>
 
-                {/* Back */}
                 <button
                     onClick={() => navigate('/')}
                     className="w-full mt-3 text-gray-500 text-sm hover:text-gray-300 transition"

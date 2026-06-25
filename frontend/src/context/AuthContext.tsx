@@ -19,12 +19,9 @@ export interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    email: string,
-    name: string,
-    password: string
-  ) => Promise<void>;
+  register: (email: string, name: string, password: string) => Promise<void>;
   logout: () => void;
+  setAuth: (token: string, user: User) => void;   // ✅ NEW
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(
@@ -35,9 +32,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export function AuthProvider({
-  children,
-}: AuthProviderProps): React.JSX.Element {
+export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,18 +49,19 @@ export function AuthProvider({
     setLoading(false);
   }, []);
 
+  // ✅ NEW: Directly set auth state without API call
+  const setAuth = (newToken: string, newUser: User) => {
+    localStorage.setItem("token", newToken);
+    localStorage.setItem("user", JSON.stringify(newUser));
+    setToken(newToken);
+    setUser(newUser);
+  };
+
   const login = async (email: string, password: string) => {
     try {
       const res = await api.post("/auth/login", { email, password });
-
       const { token, user } = res.data.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      setToken(token);
-      setUser(user);
-
+      setAuth(token, user);
       toast.success("Login successful!");
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Login failed");
@@ -73,26 +69,11 @@ export function AuthProvider({
     }
   };
 
-  const register = async (
-    email: string,
-    name: string,
-    password: string
-  ) => {
+  const register = async (email: string, name: string, password: string) => {
     try {
-      const res = await api.post("/auth/register", {
-        email,
-        name,
-        password,
-      });
-
+      const res = await api.post("/auth/register", { email, name, password });
       const { token, user } = res.data.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      setToken(token);
-      setUser(user);
-
+      setAuth(token, user);
       toast.success("Registration successful!");
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Registration failed");
@@ -103,10 +84,8 @@ export function AuthProvider({
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-
     setToken(null);
     setUser(null);
-
     toast.success("Logged out");
   };
 
@@ -118,6 +97,7 @@ export function AuthProvider({
       login,
       register,
       logout,
+      setAuth,       // ✅ NEW
     }),
     [user, token, loading]
   );
