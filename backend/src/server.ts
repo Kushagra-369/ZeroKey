@@ -67,10 +67,7 @@ const connectDB = async () => {
     const conn = await mongoose.connect(mongoURL);
     console.log(`🌐 MongoDB connected: ${conn.connection.host}`);
     
-    // Enable mongoose debug in development
-    if (process.env.NODE_ENV === 'development') {
-      mongoose.set('debug', true);
-    }
+   
     
     // Handle connection events
     mongoose.connection.on('error', (err) => {

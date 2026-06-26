@@ -38,7 +38,6 @@ const RecoveryCodeSchema = new Schema<IRecoveryCode>({
   expiresAt: {
     type: Date,
     required: true,
-    index: true
   }
 }, {
   timestamps: {

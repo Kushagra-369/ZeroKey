@@ -163,7 +163,6 @@ const VaultSchema = new Schema<IVault>({
 });
 
 // Index for faster queries
-VaultSchema.index({ userId: 1 });
 VaultSchema.index({ 'entries.category': 1 });
 VaultSchema.index({ 'entries.isFavorite': 1 });
 VaultSchema.index({ 'entries.tags': 1 });
